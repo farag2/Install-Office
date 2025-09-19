@@ -150,7 +150,7 @@ foreach ($Component in $Components)
 							Write-Information -MessageData "" -InformationAction Continue
 							Write-Verbose -Message "OneDrive Installing" -Verbose
 
-							Start-Process -FilePath $env:SystemRoot\SysWOW64\OneDriveSetup.exe
+							Start-Process -FilePath $env:SystemRoot\System32\OneDriveSetup.exe
 						}
 						else
 						{
@@ -224,8 +224,9 @@ foreach ($Component in $Components)
 			Write-Verbose -Message "Teams Downloading" -Verbose
 
 			# https://www.microsoft.com/microsoft-teams/download-app
+			$DownloadsFolder = Get-ItemPropertyValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "{374DE290-123F-4565-9164-39C4925E467B}"
 			$Parameters = @{
-				Uri             = "https://statics.teams.cdn.office.net/production-windows-x64/enterprise/webview2/lkg/MSTeams-x64.msix"
+				Uri             = "https://statics.teams.cdn.office.net/evergreen-assets/DesktopClient/MSTeamsSetup.exe"
 				OutFile         = "$DownloadsFolder\MSTeams-x64.msix"
 				UseBasicParsing = $true
 				Verbose         = $true
