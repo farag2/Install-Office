@@ -57,7 +57,7 @@
 `Office 2019, 2021, 2024, & 365` support `Windows 10` & `Windows 11` only
 
 ## Features
-
+"waiting for the owner to edit"
 <details>
   <summary>List</summary>
 
