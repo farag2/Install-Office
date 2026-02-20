@@ -67,6 +67,7 @@ if ($Host.Version.Major -eq 5)
 }
 
 [xml]$Config = Get-Content -Path "$PSScriptRoot\Default.xml" -Encoding Default -Force
+$DownloadsFolder = Get-ItemPropertyValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "{374DE290-123F-4565-9164-39C4925E467B}"
 
 switch ($Branch)
 {
@@ -164,27 +165,42 @@ foreach ($Component in $Components)
 					Write-Information -MessageData "" -InformationAction Continue
 					Write-Verbose -Message "OneDrive Downloading" -Verbose
 
-					# Parse XML to get the URL
-					# https://go.microsoft.com/fwlink/p/?LinkID=844652
-					$Parameters = @{
-						Uri             = "https://g.live.com/1rewlive5skydrive/OneDriveProductionV2"
-						UseBasicParsing = $true
-						Verbose         = $true
+					try
+					{
+						# Parse XML to get the URL
+						# https://go.microsoft.com/fwlink/p/?LinkID=844652
+						$Parameters = @{
+							Uri             = "https://g.live.com/1rewlive5skydrive/OneDriveProductionV2"
+							UseBasicParsing = $true
+							Verbose         = $true
+						}
+						$Content = Invoke-RestMethod @Parameters
 					}
-					$Content = Invoke-RestMethod @Parameters
+					catch [System.Net.WebException]
+					{
+						Write-Verbose -Message "Connection could not be established with https://oneclient.sfx.ms" -Verbose
+						exit
+					}
 
 					# Remove invalid chars
 					[xml]$OneDriveXML = $Content -replace "ï»¿", ""
-
 					$OneDriveURL = ($OneDriveXML).root.update.amd64binary.url | Select-Object -Index 1
-					$DownloadsFolder = Get-ItemPropertyValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "{374DE290-123F-4565-9164-39C4925E467B}"
-					$Parameters = @{
-						Uri             = $OneDriveURL
-						OutFile         = "$DownloadsFolder\OneDriveSetup.exe"
-						UseBasicParsing = $true
-						Verbose         = $true
+
+					try
+					{
+						$Parameters = @{
+							Uri             = $OneDriveURL
+							OutFile         = "$DownloadsFolder\OneDriveSetup.exe"
+							UseBasicParsing = $true
+							Verbose         = $true
+						}
+						Invoke-WebRequest @Parameters
 					}
-					Invoke-WebRequest @Parameters
+					catch [System.Net.WebException]
+					{
+						Write-Verbose -Message "Connection could not be established with https://oneclient.sfx.ms" -Verbose
+						exit
+					}
 
 					Start-Process -FilePath "$DownloadsFolder\OneDriveSetup.exe" -Wait
 					Remove-Item -Path "$DownloadsFolder\OneDriveSetup.exe" -Force
@@ -208,7 +224,7 @@ foreach ($Component in $Components)
 			$Node = $Config.SelectSingleNode("//ExcludeApp[@ID='PowerPoint']")
 			$Node.ParentNode.RemoveChild($Node)
 		}
-  		OneNote
+		OneNote
 		{
 			$Node = $Config.SelectSingleNode("//ExcludeApp[@ID='OneNote']")
 			$Node.ParentNode.RemoveChild($Node)
@@ -223,15 +239,22 @@ foreach ($Component in $Components)
 			Write-Information -MessageData "" -InformationAction Continue
 			Write-Verbose -Message "Teams Downloading" -Verbose
 
-			# https://www.microsoft.com/microsoft-teams/download-app
-			$DownloadsFolder = Get-ItemPropertyValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "{374DE290-123F-4565-9164-39C4925E467B}"
-			$Parameters = @{
-				Uri             = "https://statics.teams.cdn.office.net/evergreen-assets/DesktopClient/MSTeamsSetup.exe"
-				OutFile         = "$DownloadsFolder\MSTeams-x64.msix"
-				UseBasicParsing = $true
-				Verbose         = $true
+			try
+			{
+				# https://www.microsoft.com/microsoft-teams/download-app
+				$Parameters = @{
+					Uri             = "https://statics.teams.cdn.office.net/evergreen-assets/DesktopClient/MSTeamsSetup.exe"
+					OutFile         = "$DownloadsFolder\MSTeams-x64.msix"
+					UseBasicParsing = $true
+					Verbose         = $true
+				}
+				Invoke-RestMethod @Parameters
 			}
-			Invoke-RestMethod @Parameters
+			catch [System.Net.WebException]
+			{
+				Write-Verbose -Message "Connection could not be established with https://statics.teams.cdn.office.net" -Verbose
+				exit
+			}
 		}
 		ProjectPro2019Volume
 		{
@@ -273,24 +296,32 @@ if (((Get-WinHomeLocation).GeoId -eq "203") -or ((Get-WinHomeLocation).GeoId -eq
 }
 
 # It is needed to remove these keys to bypass Russian and Belarusian region blocks
-Remove-Item -Path HKCU:\SOFTWARE\Microsoft\Office\16.0\Common\Experiment -Recurse -Force -ErrorAction Ignore
-Remove-Item -Path HKCU:\SOFTWARE\Microsoft\Office\16.0\Common\ExperimentConfigs -Recurse -Force -ErrorAction Ignore
-Remove-Item -Path HKCU:\SOFTWARE\Microsoft\Office\16.0\Common\ExperimentEcs -Recurse -Force -ErrorAction Ignore
+$Paths = @(
+	"HKCU:\SOFTWARE\Microsoft\Office\16.0\Common\Experiment",
+	"HKCU:\SOFTWARE\Microsoft\Office\16.0\Common\ExperimentConfigs",
+	"HKCU:\SOFTWARE\Microsoft\Office\16.0\Common\ExperimentEcs"
+)
+Remove-Item -Path $Paths -Recurse -Force -ErrorAction Ignore
 
 # Download Office Deployment Tool
 # https://www.microsoft.com/en-us/download/details.aspx?id=49117
 if (-not (Test-Path -Path "$PSScriptRoot\setup.exe"))
 {
-	$Parameters = @{
-		Uri             = "https://officecdn.microsoft.com/pr/wsus/setup.exe"
-		OutFile         = "$PSScriptRoot\setup.exe"
-		UseBasicParsing = $true
-		Verbose         = $true
+	try
+	{
+		$Parameters = @{
+			Uri             = "https://officecdn.microsoft.com/pr/wsus/setup.exe"
+			OutFile         = "$PSScriptRoot\setup.exe"
+			UseBasicParsing = $true
+			Verbose         = $true
+		}
+		Invoke-WebRequest @Parameters
 	}
-	Invoke-WebRequest @Parameters
-
-	# Expand officedeploymenttool.exe
-	# Start-Process "$PSScriptRoot\officedeploymenttool.exe" -ArgumentList "/quiet /extract:`"$PSScriptRoot\officedeploymenttool`"" -Wait
+	catch [System.Net.WebException]
+	{
+		Write-Verbose -Message "Connection could not be established with https://officecdn.microsoft.com" -Verbose
+		exit
+	}
 }
 
 # Start downloading to the Office folder
