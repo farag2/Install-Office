@@ -28,9 +28,6 @@
 
 	.LINK
 	https://docs.microsoft.com/en-us/deployoffice/vlactivation/gvlks
-
-	.NOTES
-	Run as non-admin
 #>
 [CmdletBinding()]
 param
@@ -53,6 +50,7 @@ param
 
 if (-not (Test-Path -Path "$PSScriptRoot\Default.xml"))
 {
+	Write-Information -MessageData "" -InformationAction Continue
 	Write-Warning -Message "Default.xml doesn't exist"
 	exit
 }
@@ -67,8 +65,6 @@ if ($Host.Version.Major -eq 5)
 }
 
 [xml]$Config = Get-Content -Path "$PSScriptRoot\Default.xml" -Encoding Default -Force
-$DownloadsFolder = Get-ItemPropertyValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "{374DE290-123F-4565-9164-39C4925E467B}"
-
 switch ($Branch)
 {
 	ProPlus2019Retail
@@ -178,6 +174,7 @@ foreach ($Component in $Components)
 					}
 					catch [System.Net.WebException]
 					{
+						Write-Information -MessageData "" -InformationAction Continue
 						Write-Verbose -Message "Connection could not be established with https://oneclient.sfx.ms" -Verbose
 						exit
 					}
@@ -190,7 +187,7 @@ foreach ($Component in $Components)
 					{
 						$Parameters = @{
 							Uri             = $OneDriveURL
-							OutFile         = "$DownloadsFolder\OneDriveSetup.exe"
+							OutFile         = "$PSScriptRoot\OneDriveSetup.exe"
 							UseBasicParsing = $true
 							Verbose         = $true
 						}
@@ -198,15 +195,14 @@ foreach ($Component in $Components)
 					}
 					catch [System.Net.WebException]
 					{
+						Write-Information -MessageData "" -InformationAction Continue
 						Write-Verbose -Message "Connection could not be established with https://oneclient.sfx.ms" -Verbose
 						exit
 					}
 
-					Start-Process -FilePath "$DownloadsFolder\OneDriveSetup.exe" -Wait
-					Remove-Item -Path "$DownloadsFolder\OneDriveSetup.exe" -Force
+					Write-Information -MessageData "" -InformationAction Continue
+					Write-Verbose -Message "OneDrive was downloaded to $PSScriptRoot" -Verbose
 				}
-
-				Get-ScheduledTask -TaskName "Onedrive* Update*" | Enable-ScheduledTask | Start-ScheduledTask
 			}
 		}
 		Outlook
@@ -244,7 +240,7 @@ foreach ($Component in $Components)
 				# https://www.microsoft.com/microsoft-teams/download-app
 				$Parameters = @{
 					Uri             = "https://statics.teams.cdn.office.net/evergreen-assets/DesktopClient/MSTeamsSetup.exe"
-					OutFile         = "$DownloadsFolder\MSTeams-x64.msix"
+					OutFile         = "$PSScriptRoot\MSTeams-x64.msix"
 					UseBasicParsing = $true
 					Verbose         = $true
 				}
@@ -252,9 +248,13 @@ foreach ($Component in $Components)
 			}
 			catch [System.Net.WebException]
 			{
+				Write-Information -MessageData "" -InformationAction Continue
 				Write-Verbose -Message "Connection could not be established with https://statics.teams.cdn.office.net" -Verbose
 				exit
 			}
+
+			Write-Information -MessageData "" -InformationAction Continue
+			Write-Verbose -Message "Teams was downloaded to $PSScriptRoot" -Verbose
 		}
 		ProjectPro2019Volume
 		{
@@ -290,6 +290,8 @@ if (((Get-WinHomeLocation).GeoId -eq "203") -or ((Get-WinHomeLocation).GeoId -eq
 	# Set to Ukraine
 	$Script:Region = (Get-WinHomeLocation).GeoId
 	Set-WinHomeLocation -GeoId 241
+
+	Write-Information -MessageData "" -InformationAction Continue
 	Write-Warning -Message "Region changed to Ukrainian"
 
 	$Script:RegionChanged = $true
@@ -319,20 +321,26 @@ if (-not (Test-Path -Path "$PSScriptRoot\setup.exe"))
 	}
 	catch [System.Net.WebException]
 	{
+		Write-Information -MessageData "" -InformationAction Continue
 		Write-Verbose -Message "Connection could not be established with https://officecdn.microsoft.com" -Verbose
 		exit
 	}
 }
 
-# Start downloading to the Office folder
+Write-Information -MessageData "" -InformationAction Continue
 Write-Verbose -Message "Downloading... Please do not close any console windows." -Verbose
+
+# Start downloading to the Office folder
 Start-Process -FilePath "$PSScriptRoot\setup.exe" -ArgumentList "/download `"$PSScriptRoot\Config.xml`"" -Wait
 
 if ($Script:RegionChanged)
 {
 	# Set to original region ID
 	Set-WinHomeLocation -GeoId $Script:Region
+
+	Write-Information -MessageData "" -InformationAction Continue
 	Write-Warning -Message "Region changed to original one"
 }
 
+Write-Information -MessageData "" -InformationAction Continue
 Write-Verbose -Message "Office downloaded. Please run Install.ps1 file with administrator privileges." -Verbose
