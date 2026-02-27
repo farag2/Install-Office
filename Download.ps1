@@ -240,7 +240,7 @@ foreach ($Component in $Components)
 				# https://www.microsoft.com/microsoft-teams/download-app
 				$Parameters = @{
 					Uri             = "https://statics.teams.cdn.office.net/evergreen-assets/DesktopClient/MSTeamsSetup.exe"
-					OutFile         = "$PSScriptRoot\MSTeams-x64.msix"
+					OutFile         = "$PSScriptRoot\MSTeamsSetup.exe"
 					UseBasicParsing = $true
 					Verbose         = $true
 				}
@@ -344,3 +344,4 @@ if ($Script:RegionChanged)
 
 Write-Information -MessageData "" -InformationAction Continue
 Write-Verbose -Message "Office downloaded. Please run Install.ps1 file with administrator privileges." -Verbose
+
