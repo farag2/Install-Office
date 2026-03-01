@@ -6,7 +6,15 @@
 
 ## How-to
 
-* Download the latest archive and expand it;
+* Download [latest](https://github.com/farag2/Install-Office/releases/latest) archive and expand it;
+* Open PowerShell console as admin and change execution policy
+
+  ```powershell
+  Set-ExecutionPolicy -ExecutionPolicy Bypass -Force
+  ```
+
+* Open expanded `Office` folder in PowerShell console and choose which Office to download
+
 * Configure which components to download
   * Branch:
     * ProPlus2019Retail
@@ -31,14 +39,6 @@
     * ProjectPro2019Volume
     * ProjectPro2021Volume
     * ProjectPro2024Volume
-
-* Open PowerShell console as admin and change execution policy
-
-  ```powershell
-  Set-ExecutionPolicy -ExecutionPolicy Bypass -Force
-  ```
-
-* Open folder in PowerShell console and choose which Office to download
 
   ```powershell
   .\Download.ps1 -Branch ProPlus2019Retail -Channel Current -Components Word, Excel, PowerPoint
