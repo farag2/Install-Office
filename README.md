@@ -1,8 +1,8 @@
-[Recording 2026-03-01 202517.webm](https://github.com/user-attachments/assets/a817fa3b-d41f-46af-9386-cae939628cdb)
-
-## Download Microsoft 365 (Office 365) via ODT with PowerShell 
+## Download Microsoft 365 (Office 365) via ODT with PowerShell
 
 ## How-to
+
+[Recording 2026-03-01 202517.webm](https://github.com/user-attachments/assets/a817fa3b-d41f-46af-9386-cae939628cdb)
 
 * Download [latest](https://github.com/farag2/Install-Office/releases/latest) archive and expand it;
 * Open PowerShell console as admin and change execution policy
