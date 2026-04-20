@@ -1,21 +1,24 @@
 <#
 	.SYNOPSIS
-	Download Office 2019, 2021, 2024, and 365
+	Download Microsoft Office 2024 and Microsoft 365
 
 	.PARAMETER Branch
-	Choose Office branch: 2019, 2021, 2024, and 365
+	ProPlus2024Volume for Microsoft Office 2024
+
+	.PARAMETER Branch
+	O365ProPlusRetail for Microsoft 365
 
 	.PARAMETER Channel
-	Choose Office channel: 2019, 2021, 2024, and 365
+	PerpetualVL2024 for Microsoft Office 2024
+
+	.PARAMETER Channel
+	Current for Microsoft 365
+
+	.PARAMETER Channel
+	SemiAnnual for Microsoft 365
 
 	.PARAMETER Components
-	Choose Office components: Access, OneDrive, Outlook, Word, Excel, PowerPoint, Teams, OneNote, Publisher, Project 2019/2021/2024
-
-	.EXAMPLE Download Office 2019 with the Word, Excel, PowerPoint components
-	Download.ps1 -Branch ProPlus2019Retail -Channel Current -Components Word, Excel, PowerPoint
-
-	.EXAMPLE Download Office 2021 with the Excel, Word components
-	Download.ps1 -Branch ProPlus2021Volume -Channel PerpetualVL2021 -Components Excel, Word
+	Access, OneDrive, Outlook, Word, Excel, PowerPoint, Teams, OneNote, Publisher, Project 2024
 
 	.EXAMPLE Download Office 2024 with the Excel, Word components
 	Download.ps1 -Branch ProPlus2024Volume -Channel PerpetualVL2024 -Components Excel, Word
@@ -33,17 +36,17 @@
 param
 (
 	[Parameter(Mandatory = $true)]
-	[ValidateSet("ProPlus2019Retail", "ProPlus2021Volume", "ProPlus2024Volume", "O365ProPlusRetail")]
+	[ValidateSet("ProPlus2024Volume", "O365ProPlusRetail")]
 	[string]
 	$Branch,
 
 	[Parameter(Mandatory = $true)]
-	[ValidateSet("Current", "PerpetualVL2021", "PerpetualVL2024", "SemiAnnual")]
+	[ValidateSet("Current", "PerpetualVL2024", "SemiAnnual")]
 	[string]
 	$Channel,
 
 	[Parameter(Mandatory = $true)]
-	[ValidateSet("Access", "OneDrive", "Outlook", "Word", "Excel", "OneNote", "Publisher", "PowerPoint", "Teams", "ProjectPro2019Volume", "ProjectPro2021Volume", "ProjectPro2024Volume")]
+	[ValidateSet("Access", "OneDrive", "Outlook", "Word", "Excel", "OneNote", "Publisher", "PowerPoint", "Teams", "ProjectPro2024Volume")]
 	[string[]]
 	$Components
 )
@@ -67,14 +70,6 @@ if ($Host.Version.Major -eq 5)
 [xml]$Config = Get-Content -Path "$PSScriptRoot\Default.xml" -Encoding Default -Force
 switch ($Branch)
 {
-	ProPlus2019Retail
-	{
-		($Config.Configuration.Add.Product | Where-Object -FilterScript {$_.ID -eq ""}).ID = "ProPlus2019Retail"
-	}
-	ProPlus2021Volume
-	{
-		($Config.Configuration.Add.Product | Where-Object -FilterScript {$_.ID -eq ""}).ID = "ProPlus2021Volume"
-	}
 	ProPlus2024Volume
 	{
 		($Config.Configuration.Add.Product | Where-Object -FilterScript {$_.ID -eq ""}).ID = "ProPlus2024Volume"
@@ -90,10 +85,6 @@ switch ($Channel)
 	Current
 	{
 		($Config.Configuration.Add | Where-Object -FilterScript {$_.Channel -eq ""}).Channel = "Current"
-	}
-	PerpetualVL2021
-	{
-		($Config.Configuration.Add | Where-Object -FilterScript {$_.Channel -eq ""}).Channel = "PerpetualVL2021"
 	}
 	PerpetualVL2024
 	{
@@ -255,20 +246,6 @@ foreach ($Component in $Components)
 
 			Write-Information -MessageData "" -InformationAction Continue
 			Write-Verbose -Message "Teams was downloaded to $PSScriptRoot" -Verbose
-		}
-		ProjectPro2019Volume
-		{
-			$ProjectNode = $Config.Configuration.Add.AppendChild($Config.CreateElement("Product"))
-			$ProjectNode.SetAttribute("ID","ProjectPro2019Volume")
-			$ProjectElement = $ProjectNode.AppendChild($Config.CreateElement("Language"))
-			$ProjectElement.SetAttribute("ID","MatchOS")
-		}
-		ProjectPro2021Volume
-		{
-			$ProjectNode = $Config.Configuration.Add.AppendChild($Config.CreateElement("Product"))
-			$ProjectNode.SetAttribute("ID","ProjectPro2021Volume")
-			$ProjectElement = $ProjectNode.AppendChild($Config.CreateElement("Language"))
-			$ProjectElement.SetAttribute("ID","MatchOS")
 		}
 		ProjectPro2024Volume
 		{

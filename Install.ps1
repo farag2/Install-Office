@@ -14,5 +14,5 @@ if (-not (Test-Path -Path $PSScriptRoot\Config.xml))
 }
 
 Write-Information -MessageData "" -InformationAction Continue
-Write-Verbose -Message "Installing downloaded Microsoft 365 components..." -Verbose
+Write-Verbose -Message "Installing downloaded components..." -Verbose
 Start-Process -FilePath "$PSScriptRoot\setup.exe" -ArgumentList "/configure `"$PSScriptRoot\Config.xml`"" -Wait

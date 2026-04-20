@@ -2,7 +2,7 @@
 
 ## How-to
 
-[Recording 2026-03-01 202517.webm](https://github.com/user-attachments/assets/a817fa3b-d41f-46af-9386-cae939628cdb)
+[How-to](https://github.com/user-attachments/assets/a817fa3b-d41f-46af-9386-cae939628cdb)
 
 * Download [latest](https://github.com/farag2/Install-Office/releases/latest) archive and expand it;
 * Open PowerShell console as admin and change execution policy
@@ -15,13 +15,10 @@
 
 * Configure which components to download
   * Branch:
-    * ProPlus2019Retail
-    * ProPlus2021Volume
     * ProPlus2024Volume
     * O365ProPlusRetail
   * Channel
     * Current
-    * PerpetualVL2021
     * PerpetualVL2024
     * SemiAnnual
   * Components
@@ -34,13 +31,9 @@
     * Publisher
     * PowerPoint
     * Teams
-    * ProjectPro2019Volume
-    * ProjectPro2021Volume
     * ProjectPro2024Volume
 
   ```powershell
-  .\Download.ps1 -Branch ProPlus2019Retail -Channel Current -Components Word, Excel, PowerPoint
-  .\Download.ps1 -Branch ProPlus2021Volume -Channel PerpetualVL2021 -Components Excel, Word
   .\Download.ps1 -Branch ProPlus2024Volume -Channel PerpetualVL2024 -Components Excel, OneDrive, PowerPoint, Word
   .\Download.ps1 -Branch O365ProPlusRetail -Channel Current -Components Excel, OneDrive, Outlook, PowerPoint, Teams, Word
   ```
@@ -52,7 +45,7 @@
 
 ## Addendum
 
-`Office 2019, 2021, 2024, & 365` support `Windows 10` & `Windows 11` only
+`Microsoft Office 2024 & Microsoft 365` support `Windows 10` & `Windows 11` only
 
 ## Features
 
