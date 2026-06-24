@@ -18,7 +18,7 @@
 	SemiAnnual for Microsoft 365
 
 	.PARAMETER Components
-	Access, OneDrive, Outlook, Word, Excel, PowerPoint, Teams, OneNote, Publisher, Project 2024
+	Access, OneDrive, Outlook, Word, Excel, PowerPoint, Teams, OneNote, Publisher, Project 2024, Visio 2024
 
 	.EXAMPLE Download Office 2024 with the Excel, Word components
 	Download.ps1 -Branch ProPlus2024Volume -Channel PerpetualVL2024 -Components Excel, Word
@@ -46,7 +46,7 @@ param
 	$Channel,
 
 	[Parameter(Mandatory = $true)]
-	[ValidateSet("Access", "OneDrive", "Outlook", "Word", "Excel", "OneNote", "Publisher", "PowerPoint", "Teams", "ProjectPro2024Volume")]
+	[ValidateSet("Access", "OneDrive", "Outlook", "Word", "Excel", "OneNote", "Publisher", "PowerPoint", "Teams", "ProjectPro2024Volume", "VisioPro2024Volume")]
 	[string[]]
 	$Components
 )
@@ -254,6 +254,14 @@ foreach ($Component in $Components)
 			$ProjectElement = $ProjectNode.AppendChild($Config.CreateElement("Language"))
 			$ProjectElement.SetAttribute("ID","MatchOS")
 		}
+		VisioPro2024Volume
+		{
+			$VisioNode = $Config.Configuration.Add.AppendChild($Config.CreateElement("Product"))
+			$VisioNode.SetAttribute("ID","VisioPro2024Volume")
+			$VisioElement = $VisioNode.AppendChild($Config.CreateElement("Language"))
+			$VisioElement.SetAttribute("ID","MatchOS")
+		}
+
 	}
 }
 
