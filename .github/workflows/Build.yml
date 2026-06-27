@@ -1,0 +1,33 @@
+name: Build
+
+on: 
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag"
+        required: true
+
+jobs:
+  patch:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@main
+      - name: Install-Office.zip
+        run: |
+          $Parameters = @{
+             Path             = "src"
+             DestinationPath  = "Install-Office.zip"
+             CompressionLevel = "Fastest"
+             Force            = $true
+          }
+          Compress-Archive @Parameters
+
+      - name: Uploading
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $Tag   = "${{ inputs.tag }}"
+          $Files = "Install-Office.zip"
+          $Title = "${{ inputs.tag }}"
+          gh release create $Tag $Files --title $Title
