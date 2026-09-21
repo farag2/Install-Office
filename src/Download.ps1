@@ -26,11 +26,12 @@
 	.EXAMPLE Download Office 365 with the Excel, Word, PowerPoint components
 	Download.ps1 -Branch O365ProPlusRetail -Channel Current -Components Excel, OneDrive, Outlook, PowerPoint, Teams, Word
 
-	.LINK
-	https://config.office.com/deploymentsettings
+	.NOTES
+	The Current and SemiAnnual channels are valid for O365ProPlusRetail only
+	The PerpetualVL2024 channel is valid for ProPlus2024Volume only
 
 	.LINK
-	https://docs.microsoft.com/en-us/deployoffice/vlactivation/gvlks
+	https://config.office.com/deploymentsettings
 #>
 [CmdletBinding()]
 param
@@ -51,6 +52,22 @@ param
 	$Components
 )
 
+#Requires -Version 5.1
+
+# Channels allowed for every branch
+# ValidateSet cannot depend on another parameter's value, so the pair is checked here
+$ValidChannels = @{
+	ProPlus2024Volume = @("PerpetualVL2024")
+	O365ProPlusRetail = @("Current", "SemiAnnual")
+}
+
+if ($ValidChannels[$Branch] -notcontains $Channel)
+{
+	Write-Information -MessageData "" -InformationAction Continue
+	Write-Warning -Message "The `"$Channel`" channel cannot be used with `"$Branch`". Available: $($ValidChannels[$Branch] -join ", ")"
+	exit
+}
+
 if (-not (Test-Path -Path "$PSScriptRoot\Default.xml"))
 {
 	Write-Information -MessageData "" -InformationAction Continue
@@ -58,96 +75,65 @@ if (-not (Test-Path -Path "$PSScriptRoot\Default.xml"))
 	exit
 }
 
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-
-if ($Host.Version.Major -eq 5)
+if ($PSVersionTable.PSVersion.Major -eq 5)
 {
 	# Progress bar can significantly impact cmdlet performance
 	# https://github.com/PowerShell/PowerShell/issues/2138
 	$Script:ProgressPreference = "SilentlyContinue"
+
+	[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 }
 
 [xml]$Config = Get-Content -Path "$PSScriptRoot\Default.xml" -Encoding Default -Force
-switch ($Branch)
-{
-	ProPlus2024Volume
-	{
-		($Config.Configuration.Add.Product | Where-Object -FilterScript {$_.ID -eq ""}).ID = "ProPlus2024Volume"
-	}
-	O365ProPlusRetail
-	{
-		($Config.Configuration.Add.Product | Where-Object -FilterScript {$_.ID -eq ""}).ID = "O365ProPlusRetail"
-	}
-}
 
-switch ($Channel)
-{
-	Current
-	{
-		($Config.Configuration.Add | Where-Object -FilterScript {$_.Channel -eq ""}).Channel = "Current"
-	}
-	PerpetualVL2024
-	{
-		($Config.Configuration.Add | Where-Object -FilterScript {$_.Channel -eq ""}).Channel = "PerpetualVL2024"
-	}
-	SemiAnnual
-	{
-		($Config.Configuration.Add | Where-Object -FilterScript {$_.Channel -eq ""}).Channel = "SemiAnnual"
-	}
-}
+($Config.Configuration.Add.Product | Where-Object -FilterScript {$_.ID -eq ""}).ID = $Branch
+$Config.Configuration.Add.Channel = $Channel
 
 foreach ($Component in $Components)
 {
 	switch ($Component)
 	{
-		Access
+		{$_ -in @("Access", "Excel", "OneNote", "Outlook", "PowerPoint", "Publisher", "Word")}
 		{
-			$Node = $Config.SelectSingleNode("//ExcludeApp[@ID='Access']")
+			# Default.xml may have been edited manually, so the node is not guaranteed to exist
+			$Node = $Config.SelectSingleNode("//ExcludeApp[@ID='$Component']")
 			$Node.ParentNode.RemoveChild($Node)
 		}
-		Excel
+		{$_ -in @("ProjectPro2024Volume", "VisioPro2024Volume")}
 		{
-			$Node = $Config.SelectSingleNode("//ExcludeApp[@ID='Excel']")
-			$Node.ParentNode.RemoveChild($Node)
+			$Product = $Config.Configuration.Add.AppendChild($Config.CreateElement("Product"))
+			$Product.SetAttribute("ID", $Component)
+
+			$Language = $Product.AppendChild($Config.CreateElement("Language"))
+			$Language.SetAttribute("ID", "MatchOS")
 		}
-		OneDrive
+		"OneDrive"
 		{
 			$OneDrive = Get-Package -Name "Microsoft OneDrive" -ProviderName Programs -Force -ErrorAction Ignore
 			if (-not $OneDrive)
 			{
-				switch ((Get-CimInstance -ClassName Win32_OperatingSystem).Caption)
+				$OneDriveSetup = switch ((Get-CimInstance -ClassName Win32_OperatingSystem).Caption)
 				{
 					{$_ -match 10}
 					{
-						if (Test-Path -Path $env:SystemRoot\SysWOW64\OneDriveSetup.exe)
-						{
-							Write-Information -MessageData "" -InformationAction Continue
-							Write-Verbose -Message "OneDrive Installing" -Verbose
-
-							Start-Process -FilePath $env:SystemRoot\SysWOW64\OneDriveSetup.exe
-						}
-						else
-						{
-							$Script:OneDriveInstalled = $false
-						}
+						"$env:SystemRoot\SysWOW64\OneDriveSetup.exe"
+						break
 					}
 					{$_ -match 11}
 					{
-						if (Test-Path -Path $env:SystemRoot\System32\OneDriveSetup.exe)
-						{
-							Write-Information -MessageData "" -InformationAction Continue
-							Write-Verbose -Message "OneDrive Installing" -Verbose
-
-							Start-Process -FilePath $env:SystemRoot\System32\OneDriveSetup.exe
-						}
-						else
-						{
-							$Script:OneDriveInstalled = $false
-						}
+						"$env:SystemRoot\System32\OneDriveSetup.exe"
+						break
 					}
 				}
 
-				if (-not $Script:OneDriveInstalled)
+				if ($OneDriveSetup -and (Test-Path -Path $OneDriveSetup))
+				{
+					Write-Information -MessageData "" -InformationAction Continue
+					Write-Verbose -Message "OneDrive Installing" -Verbose
+
+					Start-Process -FilePath $OneDriveSetup
+				}
+				else
 				{
 					Write-Information -MessageData "" -InformationAction Continue
 					Write-Verbose -Message "OneDrive Downloading" -Verbose
@@ -161,18 +147,15 @@ foreach ($Component in $Components)
 							UseBasicParsing = $true
 							Verbose         = $true
 						}
-						$Content = Invoke-RestMethod @Parameters
+						$OneDriveURL = (Invoke-RestMethod @Parameters).root.update.amd64binary.url | Select-Object -Index 1
 					}
-					catch [System.Net.WebException]
+					catch
 					{
 						Write-Information -MessageData "" -InformationAction Continue
-						Write-Verbose -Message "Connection could not be established with https://oneclient.sfx.ms" -Verbose
+						Write-Verbose -Message "Connection could not be established with https://g.live.com/1rewlive5skydrive/OneDriveProductionV2" -Verbose
+
 						exit
 					}
-
-					# Remove invalid chars
-					[xml]$OneDriveXML = $Content -replace "ï»¿", ""
-					$OneDriveURL = ($OneDriveXML).root.update.amd64binary.url | Select-Object -Index 1
 
 					try
 					{
@@ -184,10 +167,11 @@ foreach ($Component in $Components)
 						}
 						Invoke-WebRequest @Parameters
 					}
-					catch [System.Net.WebException]
+					catch
 					{
 						Write-Information -MessageData "" -InformationAction Continue
-						Write-Verbose -Message "Connection could not be established with https://oneclient.sfx.ms" -Verbose
+						Write-Verbose -Message "Connection could not be established with https://g.live.com/1rewlive5skydrive/OneDriveProductionV2" -Verbose
+
 						exit
 					}
 
@@ -196,32 +180,7 @@ foreach ($Component in $Components)
 				}
 			}
 		}
-		Outlook
-		{
-			$Node = $Config.SelectSingleNode("//ExcludeApp[@ID='Outlook']")
-			$Node.ParentNode.RemoveChild($Node)
-		}
-		Word
-		{
-			$Node = $Config.SelectSingleNode("//ExcludeApp[@ID='Word']")
-			$Node.ParentNode.RemoveChild($Node)
-		}
-		PowerPoint
-		{
-			$Node = $Config.SelectSingleNode("//ExcludeApp[@ID='PowerPoint']")
-			$Node.ParentNode.RemoveChild($Node)
-		}
-		OneNote
-		{
-			$Node = $Config.SelectSingleNode("//ExcludeApp[@ID='OneNote']")
-			$Node.ParentNode.RemoveChild($Node)
-		}
-		Publisher
-		{
-			$Node = $Config.SelectSingleNode("//ExcludeApp[@ID='Publisher']")
-			$Node.ParentNode.RemoveChild($Node)
-		}
-		Teams
+		"Teams"
 		{
 			Write-Information -MessageData "" -InformationAction Continue
 			Write-Verbose -Message "Teams Downloading" -Verbose
@@ -230,38 +189,24 @@ foreach ($Component in $Components)
 			{
 				# https://www.microsoft.com/microsoft-teams/download-app
 				$Parameters = @{
-					Uri             = "https://statics.teams.cdn.office.net/evergreen-assets/DesktopClient/MSTeamsSetup.exe"
+					Uri             = "https://statics.teams.cdn.office.net/production-windows-x86/lkg/MSTeamsSetup.exe"
 					OutFile         = "$PSScriptRoot\MSTeamsSetup.exe"
 					UseBasicParsing = $true
 					Verbose         = $true
 				}
-				Invoke-RestMethod @Parameters
+				Invoke-WebRequest @Parameters
 			}
-			catch [System.Net.WebException]
+			catch
 			{
 				Write-Information -MessageData "" -InformationAction Continue
-				Write-Verbose -Message "Connection could not be established with https://statics.teams.cdn.office.net" -Verbose
+				Write-Verbose -Message "Connection could not be established with https://statics.teams.cdn.office.net/production-windows-x86/lkg/MSTeamsSetup.exe" -Verbose
+
 				exit
 			}
 
 			Write-Information -MessageData "" -InformationAction Continue
 			Write-Verbose -Message "Teams was downloaded to $PSScriptRoot" -Verbose
 		}
-		ProjectPro2024Volume
-		{
-			$ProjectNode = $Config.Configuration.Add.AppendChild($Config.CreateElement("Product"))
-			$ProjectNode.SetAttribute("ID","ProjectPro2024Volume")
-			$ProjectElement = $ProjectNode.AppendChild($Config.CreateElement("Language"))
-			$ProjectElement.SetAttribute("ID","MatchOS")
-		}
-		VisioPro2024Volume
-		{
-			$VisioNode = $Config.Configuration.Add.AppendChild($Config.CreateElement("Product"))
-			$VisioNode.SetAttribute("ID","VisioPro2024Volume")
-			$VisioElement = $VisioNode.AppendChild($Config.CreateElement("Language"))
-			$VisioElement.SetAttribute("ID","MatchOS")
-		}
-
 	}
 }
 
@@ -270,14 +215,15 @@ $Config.Save("$PSScriptRoot\Config.xml")
 # Microsoft blocks Russian and Belarusian regions for Office downloading
 # https://docs.microsoft.com/en-us/windows/win32/intl/table-of-geographical-locations
 # https://en.wikipedia.org/wiki/2022_Russian_invasion_of_Ukraine
-if (((Get-WinHomeLocation).GeoId -eq "203") -or ((Get-WinHomeLocation).GeoId -eq "29"))
+$HomeLocation = (Get-WinHomeLocation).GeoId
+if ($HomeLocation -in @(203, 29))
 {
-	# Set to Ukraine
-	$Script:Region = (Get-WinHomeLocation).GeoId
-	Set-WinHomeLocation -GeoId 241
+	# Set to Poland
+	$Script:Region = $HomeLocation
+	Set-WinHomeLocation -GeoId 191
 
 	Write-Information -MessageData "" -InformationAction Continue
-	Write-Warning -Message "Region changed to Ukrainian"
+	Write-Warning -Message "Region changed to Poland"
 
 	$Script:RegionChanged = $true
 }
@@ -304,10 +250,11 @@ if (-not (Test-Path -Path "$PSScriptRoot\setup.exe"))
 		}
 		Invoke-WebRequest @Parameters
 	}
-	catch [System.Net.WebException]
+	catch
 	{
 		Write-Information -MessageData "" -InformationAction Continue
-		Write-Verbose -Message "Connection could not be established with https://officecdn.microsoft.com" -Verbose
+		Write-Verbose -Message "Connection could not be established with https://officecdn.microsoft.com/pr/wsus/setup.exe" -Verbose
+
 		exit
 	}
 }
@@ -328,5 +275,4 @@ if ($Script:RegionChanged)
 }
 
 Write-Information -MessageData "" -InformationAction Continue
-Write-Verbose -Message "Office downloaded. Please run Install.ps1 file with administrator privileges." -Verbose
-
+Write-Verbose -Message "Office downloaded. Please run `"$PSScriptRoot\Install.ps1`" file with administrator privileges." -Verbose
